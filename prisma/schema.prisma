@@ -1,0 +1,361 @@
+// ============================================================
+// TERAMAP - Platform Digital Manajemen UTTP & Tera
+// Prisma Schema - Multi-Tenant SaaS Architecture
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum Role {
+  SUPER_ADMIN
+  ORGANIZATION_OWNER
+  ADMIN_INSTANSI
+  STAFF
+  VIEWER
+}
+
+enum OrganizationType {
+  GOVERNMENT
+  PRIVATE
+  BUSINESS
+  INDIVIDUAL
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  EXPIRED
+  TRIAL
+}
+
+enum PlanType {
+  FREE
+  PRO
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  EXPIRED
+}
+
+enum TeraResult {
+  PASS
+  FAIL
+  CONDITIONAL
+}
+
+enum EquipmentStatus {
+  ACTIVE
+  EXPIRED
+  PENDING
+  SUSPENDED
+}
+
+enum OrgStatus {
+  PENDING_APPROVAL
+  ACTIVE
+  REJECTED
+  SUSPENDED
+}
+
+// ============================================================
+// ORGANIZATION (TENANT)
+// ============================================================
+
+model Organization {
+  id                  String           @id @default(cuid())
+  name                String
+  type                OrganizationType @default(PRIVATE)
+  logoUrl             String?
+  address             String?
+  latitude            Float?
+  longitude           Float?
+  street              String?
+  village             String?          // Kelurahan/Desa
+  district            String?          // Kecamatan
+  city                String?          // Kabupaten/Kota
+  province            String?          // Provinsi
+  postalCode          String?          // Kode Pos
+  phone               String?
+  email               String?
+  defaultTeraValidity Int              @default(365)
+  signatureName       String?
+  signatureTitle      String?
+  signatureImageUrl   String?
+  signatureName2      String?
+  signatureTitle2     String?
+  signatureImageUrl2  String?
+  signatureName3      String?
+  signatureTitle3     String?
+  signatureImageUrl3  String?
+  letterNumberPrefix  String?
+  letterNumberMiddle  String?
+  letterNumberSuffix  String?
+  letterNumberCounter Int              @default(0)
+  isVerified          Boolean          @default(false)
+  verifiedAt          DateTime?
+  orgStatus           OrgStatus        @default(ACTIVE)
+  rejectionReason     String?
+  isSuspended         Boolean          @default(false)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  users               User[]
+  equipment           Equipment[]
+  documentTemplates   DocumentTemplate[]
+  subscription        Subscription?
+  transactions        Transaction[]
+  notifications       Notification[]
+
+  @@map("organizations")
+}
+
+// ============================================================
+// USER
+// ============================================================
+
+model User {
+  id                  String       @id @default(cuid())
+  name                String
+  email               String       @unique
+  password            String
+  role                Role         @default(VIEWER)
+  avatarUrl           String?
+  isActive            Boolean      @default(true)
+  emailVerified       Boolean      @default(false)
+  verificationToken   String?      @unique
+  verificationExpiry  DateTime?
+  passwordSetupToken  String?      @unique
+  passwordSetupExpiry DateTime?
+  passwordResetTokenHash String?    @unique
+  passwordResetExpiry    DateTime?
+  organizationId      String?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  teraHistories  TeraHistory[]
+
+  @@index([organizationId])
+  @@index([email])
+  @@map("users")
+}
+
+// ============================================================
+// EQUIPMENT (ALAT UTTP)
+// ============================================================
+
+model Equipment {
+  id              String          @id @default(cuid())
+  name            String
+  type            String
+  brand           String?
+  model           String?
+  serialNumber    String
+  barcode         String          @unique
+  capacity        String?
+  divisionValue   String?
+  ownerName       String?
+  businessName    String?
+  latitude        Float?
+  longitude       Float?
+  address         String?
+  street          String?
+  village         String?
+  district        String?
+  city            String?
+  province        String?
+  postalCode      String?
+  photoUrl        String?
+  photos          String[]        @default([])
+  status          EquipmentStatus @default(ACTIVE)
+  teraExpiryDate  DateTime?
+  lastTeraDate    DateTime?
+  organizationId  String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  teraHistories   TeraHistory[]
+
+  @@index([organizationId])
+  @@index([barcode])
+  @@index([serialNumber])
+  @@map("equipment")
+}
+
+// ============================================================
+// TERA HISTORY
+// ============================================================
+
+model TeraHistory {
+  id           String     @id @default(cuid())
+  equipmentId  String
+  testDate     DateTime   @default(now())
+  result       TeraResult
+  officerName  String
+  officerId    String?
+  notes        String?
+  photoUrl     String?
+  photos       String[]   @default([])
+  latitude     Float?
+  longitude    Float?
+  createdAt    DateTime   @default(now())
+
+  equipment    Equipment  @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  officer      User?      @relation(fields: [officerId], references: [id], onDelete: SetNull)
+
+  @@index([equipmentId])
+  @@index([officerId])
+  @@map("tera_histories")
+}
+
+// ============================================================
+// DOCUMENT TEMPLATE
+// ============================================================
+
+model DocumentTemplate {
+  id             String       @id @default(cuid())
+  organizationId String?
+  name           String
+  type           String
+  headerHtml     String       @db.Text
+  bodyHtml       String       @db.Text
+  footerHtml     String       @db.Text
+  isDefault      Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("document_templates")
+}
+
+// ============================================================
+// SUBSCRIPTION
+// ============================================================
+
+model Subscription {
+  id             String             @id @default(cuid())
+  organizationId String             @unique
+  status         SubscriptionStatus @default(TRIAL)
+  planType       PlanType           @default(FREE)
+  startDate      DateTime           @default(now())
+  endDate        DateTime?
+  maxEquipment   Int                @default(10)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+// ============================================================
+// TRANSACTION
+// ============================================================
+
+model Transaction {
+  id               String        @id @default(cuid())
+  organizationId   String
+  amount           Int
+  paymentChannel   String?
+  billingPeriod    String?       // MONTHLY, QUARTERLY, SEMIANNUAL, ANNUAL
+  billingMonths    Int           @default(1)
+  status           PaymentStatus @default(PENDING)
+  duitkuReference  String?       @unique
+  merchantOrderId  String?       @unique
+  paymentUrl       String?
+  description      String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  organization     Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([duitkuReference])
+  @@map("transactions")
+}
+
+// ============================================================
+// SYSTEM SETTING
+// ============================================================
+
+model SystemSetting {
+  id                      String   @id @default(cuid())
+  logoUrl                 String?
+  faviconUrl              String?
+  subscriptionPrice       Int      @default(50000)
+  quarterlyPrice          Int      @default(135000)
+  semiAnnualPrice         Int      @default(250000)
+  annualPrice             Int      @default(450000)
+  defaultTeraValidity     Int      @default(365)
+  maintenanceMode         Boolean  @default(false)
+  enabledPaymentChannels  String?  @db.Text
+  merchantName            String?
+  paymentInstructions     String?  @db.Text
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+// ============================================================
+// PLAN
+// ============================================================
+
+model Plan {
+  id              String   @id @default(cuid())
+  name            String
+  slug            String   @unique
+  monthlyPrice    Int      @default(0)
+  quarterlyPrice  Int      @default(0)
+  semiAnnualPrice Int      @default(0)
+  annualPrice     Int      @default(0)
+  equipmentLimit  Int      @default(10)
+  userLimit       Int      @default(2)
+  description     String?
+  features        Json     @default("[]")
+  isPopular       Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("plans")
+}
+
+// ============================================================
+// NOTIFICATION
+// ============================================================
+
+model Notification {
+  id             String       @id @default(cuid())
+  organizationId String?
+  userId         String?
+  title          String
+  message        String
+  type           String
+  isRead         Boolean      @default(false)
+  emailSent      Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([userId])
+  @@map("notifications")
+}
