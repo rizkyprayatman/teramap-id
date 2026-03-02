@@ -29,6 +29,7 @@ function CheckoutContent() {
   const channelName = searchParams.get("channelName") || channel;
   const vaNumber = searchParams.get("vaNumber") || "";
   const paymentUrl = searchParams.get("paymentUrl") || "";
+  const merchantNameParam = searchParams.get("merchantName") || "";
 
   const [status, setStatus] = useState<PaymentStatus>("PENDING");
   const [polling, setPolling] = useState(true);
@@ -36,6 +37,8 @@ function CheckoutContent() {
   const [countdown, setCountdown] = useState(0);
   const [startTime] = useState(Date.now());
   const [checking, setChecking] = useState(false);
+  const [merchantName, setMerchantName] = useState<string | null>(merchantNameParam || null);
+  const [paymentInstructions, setPaymentInstructions] = useState<string | null>(null);
 
   // Calculate elapsed time
   useEffect(() => {
@@ -45,6 +48,39 @@ function CheckoutContent() {
     }, 1000);
     return () => clearInterval(interval);
   }, [startTime]);
+
+  // Load merchant name + optional instructions from system settings
+  useEffect(() => {
+    let cancelled = false;
+
+    // If passed explicitly, prefer query param.
+    if (merchantNameParam.trim()) {
+      setMerchantName(merchantNameParam.trim());
+    }
+
+    (async () => {
+      try {
+        const res = await fetch("/api/branding");
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          merchantName?: string | null;
+          paymentInstructions?: string | null;
+        };
+        if (cancelled) return;
+
+        if (!merchantNameParam.trim()) {
+          setMerchantName(data.merchantName ?? null);
+        }
+        setPaymentInstructions(data.paymentInstructions ?? null);
+      } catch {
+        // ignore
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [merchantNameParam]);
 
   // Poll transaction status
   const checkStatus = useCallback(async () => {
@@ -215,6 +251,12 @@ function CheckoutContent() {
               <span className="text-muted-foreground">Order ID</span>
               <span className="font-mono text-xs">{orderId}</span>
             </div>
+            {merchantName ? (
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Merchant</span>
+                <span className="font-medium">{merchantName}</span>
+              </div>
+            ) : null}
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Metode Pembayaran</span>
               <span className="font-medium">{channelName}</span>
@@ -295,6 +337,14 @@ function CheckoutContent() {
           {/* Payment instructions */}
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
             <div className="font-medium text-blue-700 text-sm">Cara Pembayaran:</div>
+            {merchantName ? (
+              <p className="text-sm text-blue-700">
+                Pastikan tujuan pembayaran atas nama <br /> <span className="font-semibold">{merchantName}</span>.
+              </p>
+            ) : null}
+            {paymentInstructions?.trim() ? (
+              <p className="text-sm text-blue-600 whitespace-pre-line">{paymentInstructions.trim()}</p>
+            ) : null}
             <ol className="text-sm text-blue-600 space-y-1 list-decimal list-inside">
               {isVA ? (
                 <>

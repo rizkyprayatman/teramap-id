@@ -8,11 +8,15 @@ export async function GET() {
     select: {
       logoUrl: true,
       faviconUrl: true,
+      merchantName: true,
+      paymentInstructions: true,
     },
   });
 
   return NextResponse.json({
     logoUrl: settings?.logoUrl ?? null,
     faviconUrl: settings?.faviconUrl ?? null,
+    merchantName: settings?.merchantName ?? null,
+    paymentInstructions: settings?.paymentInstructions ?? null,
   });
 }

@@ -597,7 +597,7 @@ export default function LandingPage() {
                   <CardHeader className="text-center pb-2">
                     <CardTitle className="text-xl">Pro Plan</CardTitle>
                     <div className="mt-4">
-                      <span className="text-4xl font-bold">Rp 50.000</span>
+                      <span className="text-4xl font-bold">Rp 100.000</span>
                       <span className="text-muted-foreground">/bulan</span>
                     </div>
                   </CardHeader>
