@@ -88,6 +88,9 @@ export async function createSubscriptionPayment(params: {
         merchantOrderId,
         duitkuReference: invoice.reference || null,
         paymentUrl: invoice.paymentUrl,
+        vaNumber: invoice.vaNumber || null,
+        qrString: invoice.qrString || null,
+        appUrl: invoice.appUrl || null,
         paymentChannel: params.paymentChannel,
         billingPeriod: params.billingPeriod,
         billingMonths: periodInfo.months,
@@ -101,10 +104,13 @@ export async function createSubscriptionPayment(params: {
       merchantOrderId,
       amount: price,
       vaNumber: invoice.vaNumber || null,
+      qrString: invoice.qrString || null,
+      appUrl: invoice.appUrl || null,
       reference: invoice.reference || null,
     };
-  } catch (error: any) {
-    console.error("[Subscription] Payment creation failed:", error?.message || error);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[Subscription] Payment creation failed:", message);
     return { error: "Gagal membuat pembayaran. Coba lagi nanti." };
   }
 }

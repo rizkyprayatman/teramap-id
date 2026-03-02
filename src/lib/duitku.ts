@@ -24,6 +24,9 @@ interface DuitkuInvoiceResponse {
   reference: string;
   paymentUrl: string;
   vaNumber?: string;
+  qrString?: string;
+  appUrl?: string;
+  AppUrl?: string;
   amount: string;
   statusCode: string;
   statusMessage: string;
@@ -107,7 +110,14 @@ export async function createInvoice(
   }
 
   try {
-    return JSON.parse(responseText);
+    const parsed = JSON.parse(responseText) as DuitkuInvoiceResponse;
+
+    // Duitku docs sometimes use `AppUrl` casing in examples.
+    if (!parsed.appUrl && parsed.AppUrl) {
+      parsed.appUrl = parsed.AppUrl;
+    }
+
+    return parsed;
   } catch {
     throw new Error(`Duitku API returned invalid JSON: ${responseText}`);
   }

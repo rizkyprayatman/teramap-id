@@ -273,6 +273,9 @@ model Transaction {
   organizationId   String
   amount           Int
   paymentChannel   String?
+  vaNumber         String?
+  qrString         String?       @db.Text
+  appUrl           String?
   billingPeriod    String?       // MONTHLY, QUARTERLY, SEMIANNUAL, ANNUAL
   billingMonths    Int           @default(1)
   status           PaymentStatus @default(PENDING)
