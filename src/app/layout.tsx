@@ -16,7 +16,9 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 
   try {
-    const settings = (await prisma.systemSetting.findFirst()) as unknown as {
+    const settings = (await prisma.systemSetting.findFirst({
+      orderBy: { updatedAt: "desc" },
+    })) as unknown as {
       faviconUrl?: string | null;
     } | null;
 

@@ -2,6 +2,8 @@ import { auth } from "@/lib/auth";
 import { getSubscription, getTransactionHistory, getSystemPricing } from "@/actions/subscription";
 import { SubscriptionManager } from "@/components/dashboard/subscription-manager";
 
+export const dynamic = "force-dynamic";
+
 export default async function SubscriptionPage() {
   const [session, subscription, transactions, pricing] = await Promise.all([
     auth(),

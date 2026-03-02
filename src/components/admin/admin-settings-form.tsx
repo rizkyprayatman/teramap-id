@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Settings, Save, Loader2, CheckCircle, Store, CreditCard } from "lucide-react";
 import { updateSystemSettings } from "@/actions/subscription";
+import { parseEnabledPaymentChannels } from "@/lib/payment-channels";
 
 const ALL_PAYMENT_CHANNELS = [
   // Credit Card
@@ -86,9 +87,8 @@ export function AdminSettingsForm({ settings }: { settings: SystemSettings | nul
   const [saved, setSaved] = useState(false);
 
   const parsedChannels: string[] = (() => {
-    try {
-      return settings?.enabledPaymentChannels ? JSON.parse(settings.enabledPaymentChannels) : ALL_PAYMENT_CHANNELS.map(c => c.code);
-    } catch { return ALL_PAYMENT_CHANNELS.map(c => c.code); }
+    const parsed = parseEnabledPaymentChannels(settings?.enabledPaymentChannels);
+    return parsed ?? ALL_PAYMENT_CHANNELS.map((c) => c.code);
   })();
   const [enabledChannels, setEnabledChannels] = useState<string[]>(parsedChannels);
 

@@ -185,5 +185,7 @@ export async function getSystemSettings() {
   const session = await auth();
   if (session?.user?.role !== "SUPER_ADMIN") return null;
 
-  return prisma.systemSetting.findFirst();
+  return prisma.systemSetting.findFirst({
+    orderBy: { updatedAt: "desc" },
+  });
 }

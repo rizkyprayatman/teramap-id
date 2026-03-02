@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getPaymentChannels } from "@/lib/duitku";
 import { prisma } from "@/lib/prisma";
+import { parseEnabledPaymentChannels } from "@/lib/payment-channels";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -13,26 +16,31 @@ export async function GET(req: NextRequest) {
     const amount = parseInt(req.nextUrl.searchParams.get("amount") || "50000");
     
     // Get system settings for pricing and enabled channels
-    const settings = await prisma.systemSetting.findFirst();
+    const settings = await prisma.systemSetting.findFirst({
+      orderBy: { updatedAt: "desc" },
+    });
     const finalAmount = amount || settings?.subscriptionPrice || 50000;
 
-    let enabledCodes: string[] | null = null;
-    if (settings?.enabledPaymentChannels) {
-      try {
-        enabledCodes = JSON.parse(settings.enabledPaymentChannels);
-      } catch { /* ignore */ }
-    }
+    const enabledCodes = parseEnabledPaymentChannels(settings?.enabledPaymentChannels);
 
     const allChannels = await getPaymentChannels(finalAmount);
 
     // Filter by enabled channels if configured
-    const channels = enabledCodes
-      ? allChannels.filter((ch: any) => enabledCodes!.includes(ch.paymentMethod))
+    const channels = enabledCodes !== null
+      ? allChannels.filter((ch) => enabledCodes.includes(ch.paymentMethod))
       : allChannels;
 
-    return NextResponse.json({ channels });
-  } catch (error: any) {
-    console.error("[Payment Methods] Error:", error?.message || error);
+    return NextResponse.json(
+      { channels },
+      {
+        headers: {
+          "Cache-Control": "no-store, max-age=0",
+        },
+      }
+    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[Payment Methods] Error:", message);
     return NextResponse.json({ error: "Gagal mengambil metode pembayaran" }, { status: 500 });
   }
 }

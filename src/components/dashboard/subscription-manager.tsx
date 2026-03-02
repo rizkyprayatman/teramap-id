@@ -101,7 +101,9 @@ export function SubscriptionManager({ subscription, transactions, isOwner, prici
     if (step !== "payment") return;
     setLoadingChannels(true);
     setPaymentChannel("");
-    fetch(`/api/payment-methods?amount=${selectedPrice}`)
+    fetch(`/api/payment-methods?amount=${selectedPrice}&t=${Date.now()}`, {
+      cache: "no-store",
+    })
       .then((r) => r.json())
       .then((data) => {
         setPaymentChannels(data.channels || []);

@@ -3,6 +3,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createInvoice } from "@/lib/duitku";
+import { parseEnabledPaymentChannels } from "@/lib/payment-channels";
 import { v4 as uuidv4 } from "uuid";
 import { revalidatePath } from "next/cache";
 
@@ -23,7 +24,9 @@ const BILLING_PERIOD_MAP: Record<string, { months: number; label: string; priceK
 };
 
 export async function getSystemPricing() {
-  const settings = await prisma.systemSetting.findFirst();
+  const settings = await prisma.systemSetting.findFirst({
+    orderBy: { updatedAt: "desc" },
+  });
   return {
     monthly: settings?.subscriptionPrice || 50000,
     quarterly: settings?.quarterlyPrice || 135000,
@@ -45,8 +48,15 @@ export async function createSubscriptionPayment(params: {
   if (!params.paymentChannel) return { error: "Metode pembayaran harus dipilih" };
 
   // Get system setting for price based on billing period
-  const settings = await prisma.systemSetting.findFirst();
+  const settings = await prisma.systemSetting.findFirst({
+    orderBy: { updatedAt: "desc" },
+  });
   const price = settings?.[periodInfo.priceKey] || 50000;
+
+  const enabledCodes = parseEnabledPaymentChannels(settings?.enabledPaymentChannels);
+  if (enabledCodes !== null && !enabledCodes.includes(params.paymentChannel)) {
+    return { error: "Metode pembayaran tidak tersedia" };
+  }
 
   const merchantOrderId = `TERA-${uuidv4().substring(0, 8).toUpperCase()}`;
 
@@ -128,9 +138,15 @@ export async function updateSystemSettings(formData: FormData) {
   const defaultTeraValidity = parseInt(formData.get("defaultTeraValidity") as string) || 365;
   const merchantName = (formData.get("merchantName") as string) || null;
   const paymentInstructions = (formData.get("paymentInstructions") as string) || null;
-  const enabledPaymentChannels = (formData.get("enabledPaymentChannels") as string) || null;
+  const enabledPaymentChannelsRaw = (formData.get("enabledPaymentChannels") as string) || null;
+  const enabledPaymentChannelsParsed = parseEnabledPaymentChannels(enabledPaymentChannelsRaw);
+  const enabledPaymentChannels = enabledPaymentChannelsParsed
+    ? JSON.stringify(enabledPaymentChannelsParsed)
+    : null;
 
-  const existing = await prisma.systemSetting.findFirst();
+  const existing = await prisma.systemSetting.findFirst({
+    orderBy: { updatedAt: "desc" },
+  });
 
   const data = {
     logoUrl,

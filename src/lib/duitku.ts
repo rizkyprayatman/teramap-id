@@ -167,7 +167,18 @@ export async function getPaymentChannels(
   }
 
   const data = await response.json();
-  return data.paymentFee || [];
+  const fees: unknown[] = Array.isArray(data?.paymentFee) ? data.paymentFee : [];
+  return fees
+    .map((row) => {
+      const r = row as Record<string, unknown>;
+      return {
+        paymentMethod: String(r.paymentMethod ?? ""),
+        paymentName: String(r.paymentName ?? ""),
+        paymentImage: String(r.paymentImage ?? ""),
+        totalFee: Number(r.totalFee ?? 0),
+      };
+    })
+    .filter((ch) => Boolean(ch.paymentMethod));
 }
 
 export function isCallbackValid(payload: DuitkuCallbackPayload): boolean {

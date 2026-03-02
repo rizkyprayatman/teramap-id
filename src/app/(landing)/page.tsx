@@ -30,6 +30,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BrandBadge } from "@/components/branding/brand-badge";
 
+type Plan = {
+  id: string;
+  name: string;
+  monthlyPrice: number;
+  features?: string[];
+  description?: string;
+  isPopular?: boolean;
+};
+
 function FAQItem({ question, answer }: { question: string; answer: string }) {
   const [open, setOpen] = useState(false);
   return (
@@ -56,14 +65,40 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [plans, setPlans] = useState<any[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [systemPricing, setSystemPricing] = useState<{
+    monthly: number;
+    quarterly: number;
+    semiAnnual: number;
+    annual: number;
+  } | null>(null);
+
+  const contactEmail =
+    process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "teramap.id@gmail.com";
 
   useEffect(() => {
     fetch("/api/plans")
       .then((r) => r.json())
       .then((data) => setPlans(data.plans || []))
       .catch(() => {});
+
+    fetch("/api/system-pricing")
+      .then((r) => r.json())
+      .then((data) => {
+        if (
+          data &&
+          typeof data.monthly === "number" &&
+          typeof data.quarterly === "number" &&
+          typeof data.semiAnnual === "number" &&
+          typeof data.annual === "number"
+        ) {
+          setSystemPricing(data);
+        }
+      })
+      .catch(() => {});
   }, []);
+
+  const proMonthlyPrice = systemPricing?.monthly ?? 50000;
 
   return (
     <div className="min-h-screen bg-background">
@@ -597,7 +632,7 @@ export default function LandingPage() {
                   <CardHeader className="text-center pb-2">
                     <CardTitle className="text-xl">Pro Plan</CardTitle>
                     <div className="mt-4">
-                      <span className="text-4xl font-bold">Rp 100.000</span>
+                      <span className="text-4xl font-bold">Rp {proMonthlyPrice.toLocaleString("id-ID")}</span>
                       <span className="text-muted-foreground">/bulan</span>
                     </div>
                   </CardHeader>
@@ -644,7 +679,9 @@ export default function LandingPage() {
             />
             <FAQItem
               question="Berapa biaya menggunakan TERAMAP?"
-              answer="TERAMAP menyediakan Free Plan (gratis selamanya) dengan kapasitas 10 alat, dan Pro Plan seharga Rp 50.000/bulan untuk unlimited alat dan fitur lengkap."
+              answer={`TERAMAP menyediakan Free Plan (gratis selamanya) dengan kapasitas 10 alat, dan Pro Plan seharga Rp ${proMonthlyPrice.toLocaleString(
+                "id-ID"
+              )}/bulan untuk unlimited alat dan fitur lengkap.`}
             />
             <FAQItem
               question="Apakah data saya aman?"
@@ -711,7 +748,7 @@ export default function LandingPage() {
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1.5">
                   <Mail className="h-3.5 w-3.5" />
-                  <span>info@teramap.id</span>
+                  <span>{contactEmail}</span>
                 </div>
               </div>
             </div>

@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const settings = await prisma.systemSetting.findFirst({
+    orderBy: { updatedAt: "desc" },
     select: {
       logoUrl: true,
       faviconUrl: true,
